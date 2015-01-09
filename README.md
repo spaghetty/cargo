@@ -12,7 +12,7 @@ go get github.com/spaghetty/cargo
 
 ### Usage
 
-```golang
+```go
 import (
   "fmt"
 
