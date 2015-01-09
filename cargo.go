@@ -1,4 +1,4 @@
-package gconf
+package cargo
 
 import (
 	"bufio"
@@ -15,7 +15,8 @@ import (
 	"github.com/stvp/go-toml-config"
 )
 
-type Gconf struct {
+// Conf is structure containing configuration
+type Conf struct {
 	*config.ConfigSet
 	FileName    string
 	SearchPaths []string
@@ -59,16 +60,17 @@ func pathExistsAsFile(path string) bool {
 	return t.Mode().IsRegular()
 }
 
-// NewConf return new Gconfig object
-func NewConf(progName string, cFileName string) *Gconf {
-	return &Gconf{
+// NewConf return new config object
+func NewConf(progName string, cFileName string) *Conf {
+	return &Conf{
 		config.NewConfigSet(progName, config.ExitOnError),
 		cFileName,
 		make([]string, 0),
 	}
 }
 
-func (g *Gconf) AddOptions(options interface{}) {
+//AddOptions add handled option
+func (g *Conf) AddOptions(options interface{}) {
 	x := reflect.ValueOf(options)
 	s := x.Elem()
 	typeOfT := s.Type()
@@ -98,7 +100,7 @@ func (g *Gconf) AddOptions(options interface{}) {
 }
 
 // AddSearchPath add new search path to the set
-func (g *Gconf) AddSearchPath(newPath string) bool {
+func (g *Conf) AddSearchPath(newPath string) bool {
 	tmp := newPath
 	if strings.HasPrefix(tmp, "~/") {
 		tmp = strings.Replace(tmp, "~", homedir, 1)
@@ -110,8 +112,8 @@ func (g *Gconf) AddSearchPath(newPath string) bool {
 	return false
 }
 
-// LoadOptions loads options from command line and conf files
-func (g *Gconf) LoadOptions() {
+// Load loads options from command line and conf files
+func (g *Conf) Load() {
 	i := 0
 	err := g.Parse(g.FileName)
 	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
@@ -121,7 +123,7 @@ func (g *Gconf) LoadOptions() {
 }
 
 // Serialize write current running configuration to a user related config file
-func (g *Gconf) Serialize(options interface{}) {
+func (g *Conf) Serialize(options interface{}) {
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(options); err != nil {
 		fmt.Println("Fail to serialize: ", err)
