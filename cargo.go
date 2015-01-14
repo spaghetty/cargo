@@ -31,7 +31,7 @@ func init() {
 	var err error
 	usr, err = user.Current()
 	if err != nil {
-		fmt.Println("merda non riesco a leggere l'untete")
+		fmt.Println("error reading current user")
 		return
 	}
 	homedir = usr.HomeDir
@@ -81,7 +81,7 @@ func (g *Conf) AddOptions(options interface{}) {
 		if name == "" || name == "-" {
 			name = strings.ToLower(typeOfT.Field(i).Name)
 		}
-		fmt.Println(typeOfT.Field(i).Name, f.Type())
+		//fmt.Println(typeOfT.Field(i).Name, f.Type())
 		switch fvar := f.Addr().Interface().(type) {
 		case *string:
 			g.FlagSet.StringVar(fvar,

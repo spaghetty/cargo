@@ -27,7 +27,7 @@ type Option struct {
 
 var (
   Configs *cargo.Conf
-  Options *Option
+  Options Option
 )
 
 func init() {
@@ -39,7 +39,7 @@ func init() {
 }
 
 func main() {
-  Config.Load()
+  Configs.Load()
   if Options.Serialize {
     Configs.Serialize(Options)
   }
