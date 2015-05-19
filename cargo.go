@@ -94,6 +94,9 @@ func (g *Conf) AddOptions(options interface{}) {
 				name,
 				v,
 				tag.Get("description"))
+		case *int:
+			v, _ := strconv.Atoi(tag.Get("default"))
+			g.FlagSet.IntVar(fvar, name, v, tag.Get("descriptio"))
 		}
 
 	}
