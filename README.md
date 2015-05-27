@@ -19,10 +19,13 @@ import (
   "github.com/spaghetty/cargo"
   )
 
+//the tag for cargo is build of 3 parts custom name, default value and description
+// if custom name is not specified the name will be the lowered version of the field name
+// - means that the filed will be ignored as parameter  
 type Option struct {
-  OptionOne     string    `toml:"option_one", default:"", description:"this is"`
-  OptionTwo     string    `description:"this one will be serialized lowered"`
-  Serialize     bool      `toml:"-", default:"false",description:"boh"`
+  OptionOne     string    `cargo:"option_one,,this is"`
+  OptionTwo     string    `cargo:",,this one will be serialized lowered"`
+  Serialize     bool      `cargo:"-,false,new cool option"`
 }
 
 var (

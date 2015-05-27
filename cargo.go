@@ -69,6 +69,18 @@ func NewConf(progName string, cFileName string) *Conf {
 	}
 }
 
+func getSlice(s string) (string, int) {
+	currIndex := strings.Index(s, ",")
+	if currIndex < 0 {
+		return s, len(s)
+	}
+	if currIndex > 0 && s[currIndex-1] == '\\' {
+		tmp, i := getSlice(s[currIndex+1:])
+		return fmt.Sprintf("%s,%s", s[:currIndex-1], tmp), len(s[:currIndex]) + i + 1
+	}
+	return s[:currIndex], len(s[:currIndex])
+}
+
 //AddOptions add handled option
 func (g *Conf) AddOptions(options interface{}) {
 	x := reflect.ValueOf(options)
@@ -77,7 +89,12 @@ func (g *Conf) AddOptions(options interface{}) {
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 		tag := typeOfT.Field(i).Tag
-		name := tag.Get("toml")
+		data := tag.Get("cargo")
+		var name, defaultVal, description string
+		var nl, dl int
+		name, nl = getSlice(data)
+		defaultVal, dl = getSlice(data[nl+1:])
+		description, _ = getSlice(data[nl+dl+2:])
 		if name == "" || name == "-" {
 			name = strings.ToLower(typeOfT.Field(i).Name)
 		}
@@ -86,19 +103,18 @@ func (g *Conf) AddOptions(options interface{}) {
 		case *string:
 			g.FlagSet.StringVar(fvar,
 				name,
-				tag.Get("default"),
-				tag.Get("description"))
+				defaultVal,
+				description)
 		case *bool:
-			v, _ := strconv.ParseBool(tag.Get("default"))
+			v, _ := strconv.ParseBool(defaultVal)
 			g.FlagSet.BoolVar(fvar,
 				name,
 				v,
-				tag.Get("description"))
+				description)
 		case *int:
-			v, _ := strconv.Atoi(tag.Get("default"))
-			g.FlagSet.IntVar(fvar, name, v, tag.Get("descriptio"))
+			v, _ := strconv.Atoi(defaultVal)
+			g.FlagSet.IntVar(fvar, name, v, description)
 		}
-
 	}
 }
 
@@ -121,7 +137,6 @@ func (g *Conf) Load() {
 	err := g.Parse(g.FileName)
 	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
 	}
-	//panicIf(err)
 	g.FlagSet.Parse(os.Args[1:])
 }
 
