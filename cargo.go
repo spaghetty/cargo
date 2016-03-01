@@ -1,25 +1,23 @@
 package cargo
 
 import (
-	"bufio"
-	"bytes"
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/user"
-	"path"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/stvp/go-toml-config"
 )
 
 // Conf is structure containing configuration
 type Conf struct {
-	*config.ConfigSet
-	FileName    string
-	SearchPaths []string
+	*flag.FlagSet
+	SearchPaths      []string
+	FileNameFallback []string
 }
 
 var (
@@ -35,7 +33,6 @@ func init() {
 		return
 	}
 	homedir = usr.HomeDir
-
 }
 
 func panicIf(e error) {
@@ -61,12 +58,17 @@ func pathExistsAsFile(path string) bool {
 }
 
 // NewConf return new config object
-func NewConf(progName string, cFileName string) *Conf {
-	return &Conf{
-		config.NewConfigSet(progName, config.ExitOnError),
-		cFileName,
+func NewConf(progName string, files ...string) *Conf {
+	tmp := &Conf{
+		flag.NewFlagSet(progName, flag.ExitOnError),
+		//config.NewConfigSet(progName, config.ContinueOnError),
 		make([]string, 0),
+		make([]string, len(files)),
 	}
+	for i, fn := range files {
+		tmp.FileNameFallback[i] = fn
+	}
+	return tmp
 }
 
 func getSlice(s string) (string, int) {
@@ -88,6 +90,9 @@ func (g *Conf) AddOptions(options interface{}) {
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
+		if !f.CanSet() { //if the filed is private just skip it
+			continue
+		}
 		tag := typeOfT.Field(i).Tag
 		data := tag.Get("cargo")
 		var name, defaultVal, description string
@@ -95,10 +100,12 @@ func (g *Conf) AddOptions(options interface{}) {
 		name, nl = getSlice(data)
 		defaultVal, dl = getSlice(data[nl+1:])
 		description, _ = getSlice(data[nl+dl+2:])
-		if name == "" || name == "-" {
+		if name == "" {
 			name = strings.ToLower(typeOfT.Field(i).Name)
 		}
-		//fmt.Println(typeOfT.Field(i).Name, f.Type())
+		if name == "-" {
+			continue
+		}
 		switch fvar := f.Addr().Interface().(type) {
 		case *string:
 			g.FlagSet.StringVar(fvar,
@@ -119,38 +126,79 @@ func (g *Conf) AddOptions(options interface{}) {
 }
 
 // AddSearchPath add new search path to the set
-func (g *Conf) AddSearchPath(newPath string) bool {
+func (g *Conf) AddSearchPath(newPath string) error {
 	tmp := newPath
 	if strings.HasPrefix(tmp, "~/") {
 		tmp = strings.Replace(tmp, "~", homedir, 1)
 	}
-	if pathExistsAsFolder(tmp) {
-		g.SearchPaths = append(g.SearchPaths, tmp)
-		return true
-	}
-	return false
+	g.SearchPaths = append(g.SearchPaths, tmp)
+	return nil
 }
 
-// Load loads options from command line and conf files
-func (g *Conf) Load() {
-	i := 0
-	err := g.Parse(g.FileName)
-	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
+func toString(val interface{}) string {
+	switch val.(type) {
+	case string:
+		return val.(string)
+	case int, int32, int64:
+		return strconv.FormatInt(val.(int64), 10)
+	case bool:
+		if val.(bool) {
+			return "true"
+		}
+		return "false"
 	}
-	g.FlagSet.Parse(os.Args[1:])
+	return ""
 }
 
-// Serialize write current running configuration to a user related config file
-func (g *Conf) Serialize(options interface{}) {
-	buf := new(bytes.Buffer)
-	if err := toml.NewEncoder(buf).Encode(options); err != nil {
-		fmt.Println("Fail to serialize: ", err)
-	}
-	// we can define here a default file place
-	f, err := os.Create(g.FileName)
-	defer f.Close()
-	panicIf(err)
-	w := bufio.NewWriter(f)
-	w.Write(buf.Bytes())
-	w.Flush()
+//LoadFromBuffer load configurations from byte array
+func (g *Conf) LoadFromBuffer(data []byte) error {
+	myMap := make(map[string]interface{})
+	toml.Unmarshal(data, myMap)
+	var err error
+	g.FlagSet.VisitAll(func(f *flag.Flag) {
+		if strings.Contains(f.Name, ".") {
+			steps := strings.Split(f.Name, ".")
+			tmp := (interface{})(myMap)
+			for _, level := range steps {
+				var ok bool
+				if tmp, ok = tmp.(map[string]interface{})[level]; !ok {
+					err = errors.New("missing key")
+					return
+				}
+			}
+			f.Value.Set(toString(tmp))
+			return
+		}
+		if val, ok := myMap[f.Name]; ok {
+			f.Value.Set(toString(val))
+			return
+		}
+	})
+	return err
 }
+
+// // Load loads options from command line and conf files
+// func (g *Conf) Load() {
+// 	fmt.Println("Stocazzo")
+// 	i := 0
+// 	err := g.Parse(g.FileName)
+// 	fmt.Printf("%r\n", err)
+// 	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
+// 	}
+// 	g.FlagSet.Parse(os.Args[1:])
+// }
+//
+// // Serialize write current running configuration to a user related config file
+// func (g *Conf) Serialize(options interface{}) {
+// 	buf := new(bytes.Buffer)
+// 	if err := toml.NewEncoder(buf).Encode(options); err != nil {
+// 		fmt.Println("Fail to serialize: ", err)
+// 	}
+// 	// we can define here a default file place
+// 	f, err := os.Create(g.FileName)
+// 	defer f.Close()
+// 	panicIf(err)
+// 	w := bufio.NewWriter(f)
+// 	w.Write(buf.Bytes())
+// 	w.Flush()
+// }
