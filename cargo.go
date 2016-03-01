@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -63,10 +64,11 @@ func NewConf(progName string, files ...string) *Conf {
 		flag.NewFlagSet(progName, flag.ExitOnError),
 		//config.NewConfigSet(progName, config.ContinueOnError),
 		make([]string, 0),
-		make([]string, len(files)),
+		make([]string, len(files)+1),
 	}
+	tmp.FileNameFallback[0] = progName + ".conf"
 	for i, fn := range files {
-		tmp.FileNameFallback[i] = fn
+		tmp.FileNameFallback[i+1] = fn
 	}
 	return tmp
 }
@@ -150,10 +152,7 @@ func toString(val interface{}) string {
 	return ""
 }
 
-//LoadFromBuffer load configurations from byte array
-func (g *Conf) LoadFromBuffer(data []byte) error {
-	myMap := make(map[string]interface{})
-	toml.Unmarshal(data, myMap)
+func (g *Conf) loadFlagsFromMap(myMap map[string]interface{}) error {
 	var err error
 	g.FlagSet.VisitAll(func(f *flag.Flag) {
 		if strings.Contains(f.Name, ".") {
@@ -177,17 +176,38 @@ func (g *Conf) LoadFromBuffer(data []byte) error {
 	return err
 }
 
-// // Load loads options from command line and conf files
-// func (g *Conf) Load() {
-// 	fmt.Println("Stocazzo")
-// 	i := 0
-// 	err := g.Parse(g.FileName)
-// 	fmt.Printf("%r\n", err)
-// 	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
-// 	}
-// 	g.FlagSet.Parse(os.Args[1:])
-// }
-//
+//LoadFromBuffer load configurations from byte array
+func (g *Conf) LoadFromBuffer(data []byte) error {
+	myMap := make(map[string]interface{})
+	toml.Unmarshal(data, myMap)
+	return g.loadFlagsFromMap(myMap)
+}
+
+func (g *Conf) getConfFileList() []string {
+	filePaths := make([]string, 0, len(g.FileNameFallback)*len(g.SearchPaths))
+	for _, p := range g.SearchPaths {
+		for _, f := range g.FileNameFallback {
+			filePaths = append(filePaths, path.Join(p, f))
+		}
+	}
+	return filePaths
+}
+
+// Load loads options from command line and conf files
+func (g *Conf) Load() {
+	//i := 0
+	filePaths := g.getConfFileList()
+	var i int
+	for ; i < len(filePaths) && !pathExistsAsFile(filePaths[i]); i++ {
+	}
+	if i < len(filePaths) {
+		myMap := make(map[string]interface{})
+		toml.DecodeFile(filePaths[i], myMap)
+		g.loadFlagsFromMap(myMap)
+	}
+	g.FlagSet.Parse(os.Args[1:])
+}
+
 // // Serialize write current running configuration to a user related config file
 // func (g *Conf) Serialize(options interface{}) {
 // 	buf := new(bytes.Buffer)
