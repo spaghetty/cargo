@@ -28,3 +28,11 @@ func TestConfAsMain(t *testing.T) {
 		t.Error("failed to override conf file value with command line ones for test.v")
 	}
 }
+
+func TestConfPanic(t *testing.T) {
+	g := NewConf("prova_panic", "test_panic.conf")
+	g.AddSearchPath("~/bin")
+	o := Option{}
+	g.AddOptions(&o)
+	assertPanic(t, g.Load())
+}
