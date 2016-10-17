@@ -3,6 +3,7 @@ package cargo
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"os/user"
@@ -137,7 +138,17 @@ func (g *Conf) Load() {
 	err := g.Parse(g.FileName)
 	for ; i < len(g.SearchPaths) && err != nil; err, i = g.Parse(path.Join(g.SearchPaths[i], g.FileName)), i+1 {
 	}
+	if err != nil {
+		fmt.Println("Parse File Error:", err.Error())
+	}
 	g.FlagSet.Parse(os.Args[1:])
+	visitor := func(a *flag.Flag) {
+		if a.Value.String() == "" {
+			fmt.Printf("Flag %s has an empty value\n", a.Name)
+			panic("flag empty value")
+		}
+	}
+	g.FlagSet.VisitAll(visitor)
 }
 
 // Serialize write current running configuration to a user related config file
