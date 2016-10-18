@@ -179,7 +179,7 @@ func (g *Conf) loadFlagsFromMap(myMap map[string]interface{}) error {
 //LoadFromBuffer load configurations from byte array
 func (g *Conf) LoadFromBuffer(data []byte) error {
 	myMap := make(map[string]interface{})
-	toml.Unmarshal(data, myMap)
+	toml.Unmarshal(data, &myMap)
 	return g.loadFlagsFromMap(myMap)
 }
 
@@ -202,7 +202,7 @@ func (g *Conf) Load() {
 	}
 	if i < len(filePaths) {
 		myMap := make(map[string]interface{})
-		toml.DecodeFile(filePaths[i], myMap)
+		toml.DecodeFile(filePaths[i], &myMap)
 		g.loadFlagsFromMap(myMap)
 	}
 	g.FlagSet.Parse(os.Args[1:])
