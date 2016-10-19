@@ -180,6 +180,58 @@ func TestConfFromFiles(t *testing.T) {
 	assert.Equal(t, 54, o.TestInt, "not working int from config file")
 }
 
+func TestConfPanicByOpt(t *testing.T) {
+	g := NewConf("xxx")
+	o := Option{}
+	g.AddOptions(&o)
+	assert.Panics(t, func(){
+		g.Load()
+		},"Should panic")
+}
+
+func TestConfPanicWithFile(t *testing.T) {
+	filename := "test_panic.conf"	
+  	g := NewConf("test_panic")
+    g.AddSearchPath(path.Dir(filename))
+	o := Option{}
+	g.AddOptions(&o)
+	assert.Panics(t, func(){
+		g.Load()
+		},"Should panic")
+}
+
+func TestConfPanicByBuffer(t *testing.T) {
+	g := NewConf("again")
+	assert.NotNil(t, g, "fail allocating conf set")
+	o := Option{}
+	g.AddOptions(&o)
+	b := bytes.NewBufferString(`
+partest="hi"
+testnoname=""
+byebeast="blablabla"
+testint=10
+testtrue=true
+[test]
+  v=true
+`)
+	assert.Panics(t, func(){
+  		g.LoadFromBuffer(b.Bytes())
+		},"Should panic")
+}
+
+func TestConfNotPanic(t *testing.T) {
+	filename := "test.conf"	
+  	g := NewConf("test")
+	g.AddSearchPath("~/aaa")
+	g.AddSearchPath("~/bbb")
+	g.AddSearchPath(path.Dir(filename))
+	o := Option{}
+	g.AddOptions(&o)
+	assert.NotPanics(t, func(){
+		g.Load()
+		},"Should not panic")
+}
+
 // func TestConfAsMain(t *testing.T) {
 // 	g := NewConf("prova", "test.conf")
 // 	g.AddSearchPath("~/bin")

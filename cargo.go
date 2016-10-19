@@ -180,7 +180,9 @@ func (g *Conf) loadFlagsFromMap(myMap map[string]interface{}) error {
 func (g *Conf) LoadFromBuffer(data []byte) error {
 	myMap := make(map[string]interface{})
 	toml.Unmarshal(data, &myMap)
-	return g.loadFlagsFromMap(myMap)
+	err := g.loadFlagsFromMap(myMap)
+	g.checkFlagEmptyValue()
+	return err
 }
 
 func (g *Conf) getConfFileList() []string {
@@ -204,8 +206,22 @@ func (g *Conf) Load() {
 		myMap := make(map[string]interface{})
 		toml.DecodeFile(filePaths[i], &myMap)
 		g.loadFlagsFromMap(myMap)
+	} else {
+		fmt.Printf("Warning parse file: file not found \n")
 	}
 	g.FlagSet.Parse(os.Args[1:])
+	g.checkFlagEmptyValue()
+}
+
+// Check empty flag value
+func (g *Conf) checkFlagEmptyValue() {
+	visitor := func(a *flag.Flag) {
+		if a.Value.String() == "" {
+			fmt.Printf("Flag %s has an empty value\n", a.Name)
+			panic("flag empty value")
+		}
+	}
+	g.FlagSet.VisitAll(visitor)
 }
 
 // // Serialize write current running configuration to a user related config file
