@@ -184,20 +184,20 @@ func TestConfPanicByOpt(t *testing.T) {
 	g := NewConf("xxx")
 	o := Option{}
 	g.AddOptions(&o)
-	assert.Panics(t, func(){
+	assert.Panics(t, func() {
 		g.Load()
-		},"Should panic")
+	}, "Should panic")
 }
 
 func TestConfPanicWithFile(t *testing.T) {
-	filename := "test_panic.conf"	
-  	g := NewConf("test_panic")
-    g.AddSearchPath(path.Dir(filename))
+	filename := "test_panic.conf"
+	g := NewConf("test_panic")
+	g.AddSearchPath(path.Dir(filename))
 	o := Option{}
 	g.AddOptions(&o)
-	assert.Panics(t, func(){
+	assert.Panics(t, func() {
 		g.Load()
-		},"Should panic")
+	}, "Should panic")
 }
 
 func TestConfPanicByBuffer(t *testing.T) {
@@ -214,22 +214,22 @@ testtrue=true
 [test]
   v=true
 `)
-	assert.Panics(t, func(){
-  		g.LoadFromBuffer(b.Bytes())
-		},"Should panic")
+	assert.Panics(t, func() {
+		g.LoadFromBuffer(b.Bytes())
+	}, "Should panic")
 }
 
 func TestConfNotPanic(t *testing.T) {
-	filename := "test.conf"	
-  	g := NewConf("test")
+	filename := "test.conf"
+	g := NewConf("test")
 	g.AddSearchPath("~/aaa")
 	g.AddSearchPath("~/bbb")
 	g.AddSearchPath(path.Dir(filename))
 	o := Option{}
 	g.AddOptions(&o)
-	assert.NotPanics(t, func(){
+	assert.NotPanics(t, func() {
 		g.Load()
-		},"Should not panic")
+	}, "Should not panic")
 }
 
 // func TestConfAsMain(t *testing.T) {
