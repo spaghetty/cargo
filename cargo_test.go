@@ -5,6 +5,7 @@ package cargo
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/user"
 	"path"
 	"runtime"
@@ -113,7 +114,6 @@ testtrue=true
 	assert.Equal(t, false, o1.SuppForTestSuite, "nested struct gets default value")
 	assert.Equal(t, true, o1.TestTrue, "fail testing true  ")
 	assert.Equal(t, 10, o1.TestInt, "fail to set value for integer")
-
 }
 
 func TestFromCommandLine(t *testing.T) {
@@ -230,6 +230,27 @@ func TestConfNotPanic(t *testing.T) {
 	assert.NotPanics(t, func() {
 		g.Load()
 	}, "Should not panic")
+}
+
+func TestConfFromEnviroments(t *testing.T) {
+	os.Setenv("ENV_VAR_STRING", "custom env var")
+	os.Setenv("ENV_VAR_BOOL", "true")
+	os.Setenv("ENV_VAR_INT", "42")
+	type MyOption struct {
+		DefaultEnvVarString string `cargo:"testEnvVarString,$ENV_VAR_STRING,"`
+		DefaultEnvVarBool   bool   `cargo:"testEnvVarBool,$ENV_VAR_BOOL,"`
+		DefaultEnvVarInt    int    `cargo:"testEnvVarInt,$ENV_VAR_INT,"`
+	}
+
+	g1 := NewConf("again")
+	assert.NotNil(t, g1, "fail allocating conf set")
+	o1 := &MyOption{}
+	g1.AddOptions(o1)
+	p := []string{}
+	g1.Parse(p)
+	assert.Equal(t, "custom env var", o1.DefaultEnvVarString, "fail getting default from env vars string")
+	assert.Equal(t, true, o1.DefaultEnvVarBool, "fail getting default from env vars bool")
+	assert.Equal(t, 42, o1.DefaultEnvVarInt, "fail getting default from env vars int")
 }
 
 // func TestConfAsMain(t *testing.T) {

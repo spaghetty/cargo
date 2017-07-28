@@ -101,6 +101,10 @@ func (g *Conf) AddOptions(options interface{}) {
 		var nl, dl int
 		name, nl = getSlice(data)
 		defaultVal, dl = getSlice(data[nl+1:])
+
+		if len(defaultVal) > 0 && []rune(defaultVal)[0] == '$' {
+			defaultVal = os.Getenv(defaultVal[1:])
+		}
 		description, _ = getSlice(data[nl+dl+2:])
 		if name == "" {
 			name = strings.ToLower(typeOfT.Field(i).Name)
